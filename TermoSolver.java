@@ -5,19 +5,28 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.Scanner;
 
 public class TermoSolver {
+
+    public static final String RESET = "\033[0m";
+    public static final String GREEN = "\033[0;32m";
+    public static final String YELLOW = "\033[0;33m";
+
     private String[] wordList;
     private String pickedWord;
     private String hiddenWord;
+    private String inputWord;
 
     public TermoSolver(String[] wordList) {
         this.wordList = wordList;
         this.pickedWord = pickRandomWord();
         this.hiddenWord = initializeHiddenWord();
+        this.inputWord = "";
     }
 
     private String pickRandomWord() {
+        applyLengthFilter();
         Random random = new Random();
         return wordList[random.nextInt(wordList.length)];
     }
@@ -28,68 +37,30 @@ public class TermoSolver {
         return new String(hidden);
     }
 
-    public Result makeGuess(String guess) {
-        char[] hiddenWordArray = hiddenWord.toCharArray();
-        List<Character> presentLetters = new ArrayList<>();
-        List<Character> notPresentLetters = new ArrayList<>();
-
-        for (int i = 0; i < pickedWord.length(); i++) {
-            if (pickedWord.charAt(i) == guess.charAt(i)) {
-                hiddenWordArray[i] = guess.charAt(i);
-            } else if (pickedWord.contains(String.valueOf(guess.charAt(i)))) {
-                presentLetters.add(guess.charAt(i));
-            } else {
-                notPresentLetters.add(guess.charAt(i));
+    public String makeGuess(String guess) {
+        StringBuilder b = new StringBuilder();
+        for(int i = 0; i < guess.length(); i++){
+            char c = guess.charAt(i);
+            if(pickedWord.charAt(i) == c){
+                b.append(GREEN + c + RESET);
+            }else if(pickedWord.contains(Character.toString(c))){
+                b.append(YELLOW + c + RESET);
+            }else{
+                b.append(c);
             }
         }
-
-        hiddenWord = new String(hiddenWordArray);
-        return new Result(hiddenWord, presentLetters, notPresentLetters);
+        return b.toString();
     }
 
     public void applyLengthFilter() {
         List<String> temp = new ArrayList<>();
         for (String s : wordList) {
-            if (s.length() == pickedWord.length()) {
+            if (s.length() == 5) {
                 temp.add(s);
             }
         }
         String[] tempArr = temp.toArray(new String[0]);
         wordList = tempArr;
-    }
-
-    public void filterWords(Result result) {
-        List<String> filteredWords = new ArrayList<>();
-
-        for (String word : wordList) {
-            if (matchesResult(word, result)) {
-                filteredWords.add(word);
-            }
-        }
-        String[] temp = filteredWords.toArray(new String[0]);
-        wordList = temp;
-    }
-
-    private boolean matchesResult(String word, Result result) {
-        if (!result.getWord().equals(word)) {
-            return false;
-        }
-    
-        // Check for matching characters at other positions
-        for (char presentChar : result.getPresentChars()) {
-            if (result.getWord().indexOf(presentChar) == -1) {
-                return false;
-            }
-        }
-    
-        // Check for characters that should not be present
-        for (char notPresentChar : result.getNotPresentChars()) {
-            if (word.indexOf(notPresentChar) != -1) {
-                return false;
-            }
-        }
-    
-        return true;
     }
 
     public void printWordList() {
@@ -98,17 +69,8 @@ public class TermoSolver {
         }
     }
 
-    public String makeFirstGuess() {
-        applyLengthFilter();
-        return wordList[0];
-    }
-
-    public boolean isEmpty(){
-        return wordList.length == 0;
-    }
-
     public boolean isSolved() {
-        return hiddenWord.equals(pickedWord);
+        return inputWord.equals(pickedWord);
     }
 
     public String getHiddenWord() {
@@ -119,9 +81,15 @@ public class TermoSolver {
         return pickedWord;
     }
 
+    public void setInputWord(String inputWord) {
+        this.inputWord = inputWord;
+    }
+
     public static void main(String[] args) {
         String path = "words.txt";
         List<String> words = new ArrayList<>();
+        Scanner sc = new Scanner(System.in);
+        int tries = 0;
 
         try (BufferedReader br = new BufferedReader(new FileReader(path))) {
 
@@ -139,64 +107,14 @@ public class TermoSolver {
 
         TermoSolver termoSolver = new TermoSolver(wordList);
 
-        String firstGuess = termoSolver.makeFirstGuess();
+        System.err.println("Palavra: " + termoSolver.getHiddenWord());
 
-        System.out.println("Palavra original: " + termoSolver.getPickedWord());
-
-        System.err.println("Palavra escodinda: " + termoSolver.getHiddenWord());
-
-        System.out.println("Primeira tentativa: " + firstGuess);
-
-        Result result = termoSolver.makeGuess(firstGuess);
-
-        System.out.println("Resultado primeira tentativa: " + result);
-
-        System.out.println(termoSolver.isEmpty());
-
-        termoSolver.filterWords(result);
-
-        System.out.println(termoSolver.isEmpty());
-
-    }
-}
-
-class Result {
-    private String word;
-    private List<Character> presentChars;
-    private List<Character> notPresentChars;
-
-    public Result(String word, List<Character> presentChars, List<Character> notPresentChars) {
-        this.word = word;
-        this.presentChars = presentChars;
-        this.notPresentChars = notPresentChars;
-    }
-
-    public String getWord() {
-        return word;
-    }
-
-    public void setWord(String word) {
-        this.word = word;
-    }
-
-    public List<Character> getPresentChars() {
-        return presentChars;
-    }
-
-    public void setPresentChars(List<Character> presentChars) {
-        this.presentChars = presentChars;
-    }
-
-    public List<Character> getNotPresentChars() {
-        return notPresentChars;
-    }
-
-    public void setNotPresentChars(List<Character> notPresentChars) {
-        this.notPresentChars = notPresentChars;
-    }
-
-    @Override
-    public String toString() {
-        return "Result [word=" + word + ", presentChars=" + presentChars + ", notPresentChars=" + notPresentChars + "]";
+        while(tries > 6 || !termoSolver.isSolved()){
+            String guess = sc.nextLine();
+            termoSolver.setInputWord(guess);
+            System.out.println("> " + termoSolver.makeGuess(guess));
+        }
+        System.out.println("A palavra correta era: " + termoSolver.getPickedWord());
+        
     }
 }
