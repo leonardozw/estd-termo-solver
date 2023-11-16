@@ -13,25 +13,25 @@ public class TermoSolver {
     public static final String GREEN = "\033[0;32m";
     public static final String YELLOW = "\033[0;33m";
 
-    private String[] wordList;
+    private List<String> wordList;
     private String pickedWord;
     private String hiddenWord;
     private String inputWord;
 
-    public TermoSolver(String[] wordList) {
+    public TermoSolver(List<String> wordList) {
         this.wordList = wordList;
         this.pickedWord = pickRandomWord();
-        this.hiddenWord = initializeHiddenWord();
+        this.hiddenWord = hideWord();
         this.inputWord = "";
     }
 
     private String pickRandomWord() {
-        applyLengthFilter();
         Random random = new Random();
-        return wordList[random.nextInt(wordList.length)];
+        int size = wordList.size();
+        return wordList.get(random.nextInt(size));
     }
 
-    private String initializeHiddenWord() {
+    private String hideWord() {
         char[] hidden = new char[pickedWord.length()];
         Arrays.fill(hidden, '*');
         return new String(hidden);
@@ -52,20 +52,9 @@ public class TermoSolver {
         return b.toString();
     }
 
-    public void applyLengthFilter() {
-        List<String> temp = new ArrayList<>();
-        for (String s : wordList) {
-            if (s.length() == 5) {
-                temp.add(s);
-            }
-        }
-        String[] tempArr = temp.toArray(new String[0]);
-        wordList = tempArr;
-    }
-
-    public void printWordList() {
-        for (String s : wordList) {
-            System.out.println(s);
+    public void print(){
+        for(String w : wordList){
+            System.out.println(w);
         }
     }
 
@@ -86,15 +75,33 @@ public class TermoSolver {
     }
 
     public static void main(String[] args) {
-        String path = "words.txt";
-        List<String> words = new ArrayList<>();
+        String path = "filteredWords.txt";
         Scanner sc = new Scanner(System.in);
         int tries = 0;
+        
+        List<String> wordsList = readFromFile(path);
 
+        TermoSolver termoSolver = new TermoSolver(wordsList);
+
+        termoSolver.print();
+
+        System.err.println("Palavra: " + termoSolver.getHiddenWord());
+        System.out.println(termoSolver.getPickedWord());
+
+        while(tries < 6 && !termoSolver.isSolved()){
+            String guess = sc.nextLine();
+            termoSolver.setInputWord(guess);
+            System.out.println("> " + termoSolver.makeGuess(guess));
+            tries++;
+        }
+        System.out.println("A palavra correta era: " + termoSolver.getPickedWord());
+        
+    }
+
+    public static List<String> readFromFile(String path){
+        List<String> words = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(path))) {
-
             String row;
-
             while ((row = br.readLine()) != null) {
                 String[] wordsInRow = row.split("\\s+");
                 words.addAll(Arrays.asList(wordsInRow));
@@ -102,19 +109,6 @@ public class TermoSolver {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        String[] wordList = words.toArray(new String[0]);
-
-        TermoSolver termoSolver = new TermoSolver(wordList);
-
-        System.err.println("Palavra: " + termoSolver.getHiddenWord());
-
-        while(tries > 6 || !termoSolver.isSolved()){
-            String guess = sc.nextLine();
-            termoSolver.setInputWord(guess);
-            System.out.println("> " + termoSolver.makeGuess(guess));
-        }
-        System.out.println("A palavra correta era: " + termoSolver.getPickedWord());
-        
+        return words;
     }
 }
